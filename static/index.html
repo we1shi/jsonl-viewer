@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSONL Viewer</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Tab Bar -->
+    <nav id="tabbar">
+      <div id="tab-list"></div>
+      <button id="tab-add" title="Open a JSONL file">+</button>
+      <span id="tab-empty">No file open — click + to open one</span>
+    </nav>
+
+    <!-- Top Bar -->
+    <header id="topbar">
+      <div class="topbar-left">
+        <h1 id="filename">JSONL Viewer</h1>
+        <span id="record-count" class="badge hidden"></span>
+      </div>
+      <div class="topbar-right">
+        <div class="filter-group">
+          <select id="field-select">
+            <option value="">All fields</option>
+          </select>
+          <input type="text" id="filter-input" placeholder="Filter records..." autocomplete="off">
+          <button id="filter-btn" title="Search">&#128269;</button>
+          <button id="clear-filter-btn" class="btn-sm" title="Clear filter">&times;</button>
+        </div>
+        <div class="page-size-group">
+          <label for="page-size">Per page:</label>
+          <select id="page-size">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <!-- Status Bar -->
+    <div id="statusbar">
+      <span id="status-text">Loading...</span>
+      <span id="filter-info" class="hidden"></span>
+    </div>
+
+    <!-- Actions Bar -->
+    <div id="actions-bar" class="hidden">
+      <div class="actions-left">
+        <button id="btn-select-page" class="btn-action">Select page</button>
+        <button id="btn-clear-selection" class="btn-action">Clear selection</button>
+        <span id="selection-count" class="selection-badge">0 selected</span>
+      </div>
+      <div class="actions-right">
+        <button id="btn-export-selected" class="btn-action btn-export" disabled>Export selected</button>
+        <button id="btn-export-filtered" class="btn-action btn-export hidden">Export filtered</button>
+      </div>
+    </div>
+
+    <!-- Record List -->
+    <main id="record-list">
+      <div id="loading" class="center-message">No file open. Click <strong>+</strong> to open a JSONL file.</div>
+    </main>
+
+    <!-- Pagination -->
+    <footer id="pagination">
+      <button id="btn-first" title="First page">&laquo;</button>
+      <button id="btn-prev" title="Previous page">&lsaquo;</button>
+      <span id="page-info">Page 0 of 0</span>
+      <button id="btn-next" title="Next page">&rsaquo;</button>
+      <button id="btn-last" title="Last page">&raquo;</button>
+      <input type="number" id="page-jump" min="1" placeholder="Go to page..." title="Enter page number and press Enter">
+    </footer>
+
+    <!-- File Browser Modal -->
+    <div id="modal-overlay" class="hidden">
+      <div id="modal">
+        <div class="modal-header">
+          <h2>Open JSONL File</h2>
+          <button class="modal-close" id="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-path-bar">
+          <button id="modal-up-btn" title="Go up one directory">&#8593; Up</button>
+          <span id="modal-current-dir">/</span>
+        </div>
+        <div class="modal-direct-input">
+          <input type="text" id="modal-path-input" placeholder="Or paste a file path and press Open..." autocomplete="off">
+          <button id="modal-open-btn">Open</button>
+        </div>
+        <div class="modal-file-list" id="modal-file-list">
+          <div class="modal-empty">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
