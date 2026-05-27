@@ -93,6 +93,15 @@ html, body {
   color: var(--text);
 }
 
+.tab.dragging {
+  opacity: 0.4;
+}
+
+.tab.drop-target {
+  border-left: 2px solid var(--accent);
+  background: var(--tab-hover-bg);
+}
+
 .tab.active {
   background: var(--tab-active-bg);
   color: var(--text-bright);
@@ -142,6 +151,23 @@ html, body {
 #tab-add:hover {
   background: var(--tab-hover-bg);
   color: var(--text-bright);
+}
+
+.tab-tooltip {
+  position: fixed;
+  z-index: 2000;
+  background: #3c3c3c;
+  color: #f0f0f0;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  max-width: 500px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
 
 #tab-empty {

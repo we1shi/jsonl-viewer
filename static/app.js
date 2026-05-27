@@ -1,6 +1,7 @@
 // ── State ──────────────────────────────────────────────────────────────────
 // Per-file state, keyed by base64 path
-const fileStates = new Map(); // key -> { totalRecords, currentPage, pageSize, totalPages, filterQuery, filterField, isFiltering, filteredTotal, availableFields, cachedRecords }
+const fileStates = new Map(); // key -> { totalRecords, currentPage, ... }
+let tabOrder = [];  // display order of tab keys
 let activeKey = null;
 
 // ── DOM Refs ───────────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ function ensureState(key) {
       availableFields: [],
       cachedRecords: [],
       selectedIndices: new Set(),
+      scrollTop: 0,
     });
   }
   return fileStates.get(key);
@@ -235,12 +237,38 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
+// ── Tab Tooltip ────────────────────────────────────────────────────────────
+let tooltipEl = null;
+
+function showTabTooltip(anchor, text) {
+  hideTabTooltip();
+  tooltipEl = document.createElement("div");
+  tooltipEl.className = "tab-tooltip";
+  tooltipEl.textContent = text;
+  document.body.appendChild(tooltipEl);
+  const rect = anchor.getBoundingClientRect();
+  tooltipEl.style.left = rect.left + "px";
+  tooltipEl.style.top = (rect.bottom + 4) + "px";
+}
+
+function hideTabTooltip() {
+  if (tooltipEl) {
+    tooltipEl.remove();
+    tooltipEl = null;
+  }
+}
+
 // ── Tab Management ─────────────────────────────────────────────────────────
 function renderTabs() {
   dom.tabList.innerHTML = "";
-  const keys = Array.from(fileStates.keys());
+  // Sync tabOrder with currently open files
+  const currentKeys = new Set(fileStates.keys());
+  tabOrder = tabOrder.filter(k => currentKeys.has(k));
+  for (const k of currentKeys) {
+    if (!tabOrder.includes(k)) tabOrder.push(k);
+  }
 
-  if (keys.length === 0) {
+  if (tabOrder.length === 0) {
     dom.tabEmpty.style.display = "block";
     dom.tabList.style.display = "none";
     dom.filename.textContent = "JSONL Viewer";
@@ -257,16 +285,22 @@ function renderTabs() {
   dom.tabEmpty.style.display = "none";
   dom.tabList.style.display = "flex";
 
-  for (const key of keys) {
+  for (const key of tabOrder) {
     const fi = fileStates.get(key);
+    if (!fi) continue;
+
     const tab = document.createElement("div");
     tab.className = "tab" + (key === activeKey ? " active" : "");
     tab.dataset.key = key;
+    tab.draggable = true;
+
+    const tooltipText = fi.path || fi.name || key;
+    tab.addEventListener("mouseenter", () => showTabTooltip(tab, tooltipText));
+    tab.addEventListener("mouseleave", hideTabTooltip);
 
     const nameSpan = document.createElement("span");
     nameSpan.className = "tab-filename";
     nameSpan.textContent = fi.name || "Unknown";
-    nameSpan.title = fi.path || key;
 
     const closeBtn = document.createElement("span");
     closeBtn.className = "tab-close";
@@ -281,12 +315,59 @@ function renderTabs() {
     tab.appendChild(closeBtn);
 
     tab.addEventListener("click", () => switchTab(key));
+
+    // Drag-and-drop handlers
+    tab.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", key);
+      e.dataTransfer.effectAllowed = "move";
+      tab.classList.add("dragging");
+    });
+    tab.addEventListener("dragend", () => {
+      tab.classList.remove("dragging");
+      // Remove drop-target styling from all tabs
+      dom.tabList.querySelectorAll(".tab").forEach(t => t.classList.remove("drop-target"));
+    });
+    tab.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      // Highlight the tab we're hovering over
+      dom.tabList.querySelectorAll(".tab").forEach(t => t.classList.remove("drop-target"));
+      if (!tab.classList.contains("dragging")) {
+        tab.classList.add("drop-target");
+      }
+    });
+    tab.addEventListener("dragleave", () => {
+      tab.classList.remove("drop-target");
+    });
+    tab.addEventListener("drop", (e) => {
+      e.preventDefault();
+      tab.classList.remove("drop-target");
+      const fromKey = e.dataTransfer.getData("text/plain");
+      const toKey = key;
+      if (fromKey && fromKey !== toKey) {
+        const fromIdx = tabOrder.indexOf(fromKey);
+        const toIdx = tabOrder.indexOf(toKey);
+        if (fromIdx !== -1 && toIdx !== -1) {
+          tabOrder.splice(fromIdx, 1);
+          tabOrder.splice(toIdx, 0, fromKey);
+          renderTabs();
+        }
+      }
+    });
+
     dom.tabList.appendChild(tab);
   }
 }
 
 async function switchTab(key) {
   if (key === activeKey) return;
+
+  // Save scroll position of current tab
+  if (activeKey) {
+    const prevSt = fileStates.get(activeKey);
+    if (prevSt) prevSt.scrollTop = dom.recordList.scrollTop;
+  }
+
   activeKey = key;
   const st = getState();
   if (!st) return;
@@ -528,6 +609,10 @@ async function loadPage(page) {
     updatePagination();
     updateStatus(data);
     updateActionsBar();
+    // Restore scroll position
+    requestAnimationFrame(() => {
+      dom.recordList.scrollTop = st.scrollTop || 0;
+    });
   } catch (err) {
     dom.recordList.innerHTML = `<div class="center-message">Error: ${err.message}</div>`;
   }
