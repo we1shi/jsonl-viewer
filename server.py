@@ -120,7 +120,7 @@ def read_records_batch(fi: FileIndex, start_idx: int, count: int) -> list[dict]:
     return results
 
 
-def scan_filter(fi: FileIndex, query: str, field: str | None, offset: int, limit: int) -> dict:
+def scan_filter(fi: FileIndex, query: str, field: str | None, offset: int, limit: int, negate: bool = False) -> dict:
     matches: list[int] = []
     q = query.lower()
     scan_count = min(fi.count, MAX_FILTER_SCAN)
@@ -129,16 +129,18 @@ def scan_filter(fi: FileIndex, query: str, field: str | None, offset: int, limit
         rec = read_record(fi, i)
         if rec is None:
             continue
+        matched = False
         if field:
             val = rec.get(field)
-            if val is None:
-                continue
-            if q in json.dumps(val, ensure_ascii=False).lower():
-                matches.append(i)
+            if val is not None:
+                if q in json.dumps(val, ensure_ascii=False).lower():
+                    matched = True
         else:
             raw = json.dumps(rec, ensure_ascii=False).lower()
             if q in raw:
-                matches.append(i)
+                matched = True
+        if matched != negate:
+            matches.append(i)
 
     total_matches = len(matches)
     page_indices = matches[offset : offset + limit]
@@ -185,6 +187,7 @@ class ExportRequest(BaseModel):
     indices: list[int] | None = None
     query: str = ""
     field: str = ""
+    negate: bool = False
 
 
 @app.get("/api/files")
@@ -304,13 +307,14 @@ def api_file_records(
     limit: int = Query(50, ge=1, le=200),
     query: str = Query(""),
     field: str = Query(""),
+    negate: bool = Query(False),
 ):
     fi = get_index(key)
     if fi is None:
         raise HTTPException(status_code=404, detail="File not found")
     if query:
         fname = field if field else None
-        return scan_filter(fi, query, fname, offset, limit)
+        return scan_filter(fi, query, fname, offset, limit, negate)
     records = read_records_batch(fi, offset, limit)
     return {"records": records, "total": fi.count}
 
@@ -344,15 +348,16 @@ def api_export_file(key: str, req: ExportRequest):
             rec = read_record(fi, i)
             if rec is None:
                 continue
+            matched = False
             if fname:
                 val = rec.get(fname)
-                if val is None:
-                    continue
-                if q in json.dumps(val, ensure_ascii=False).lower():
-                    indices.append(i)
+                if val is not None and q in json.dumps(val, ensure_ascii=False).lower():
+                    matched = True
             else:
                 if q in json.dumps(rec, ensure_ascii=False).lower():
-                    indices.append(i)
+                    matched = True
+            if matched != req.negate:
+                indices.append(i)
     else:
         raise HTTPException(status_code=400, detail="Provide indices or query")
 
@@ -400,6 +405,7 @@ def api_records_legacy(
     limit: int = Query(50, ge=1, le=200),
     query: str = Query(""),
     field: str = Query(""),
+    negate: bool = Query(False),
 ):
     key = _default_key()
     if key is None:
@@ -407,7 +413,7 @@ def api_records_legacy(
     fi = open_files[key]
     if query:
         fname = field if field else None
-        return scan_filter(fi, query, fname, offset, limit)
+        return scan_filter(fi, query, fname, offset, limit, negate)
     records = read_records_batch(fi, offset, limit)
     return {"records": records, "total": fi.count}
 

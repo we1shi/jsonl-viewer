@@ -291,6 +291,33 @@ html, body {
   color: var(--text-bright);
 }
 
+.btn-negate {
+  background: var(--bg-input);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  line-height: 1;
+  min-width: 28px;
+  text-align: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.btn-negate:hover {
+  background: var(--tab-hover-bg);
+  color: var(--text-bright);
+}
+
+.btn-negate.active {
+  background: var(--red);
+  color: white;
+  border-color: var(--red);
+}
+
 .page-size-group {
   display: flex;
   align-items: center;

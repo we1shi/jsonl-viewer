@@ -17,6 +17,7 @@ const dom = {
   fieldSelect: $("#field-select"),
   filterInput: $("#filter-input"),
   filterBtn: $("#filter-btn"),
+  filterNegateBtn: $("#filter-negate-btn"),
   clearFilterBtn: $("#clear-filter-btn"),
   pageSize: $("#page-size"),
   statusText: $("#status-text"),
@@ -59,6 +60,7 @@ function ensureState(key) {
       totalPages: 0,
       filterQuery: "",
       filterField: "",
+      filterNegate: false,
       isFiltering: false,
       filteredTotal: 0,
       availableFields: [],
@@ -113,10 +115,11 @@ async function apiFileMeta(key) {
   return res.json();
 }
 
-async function apiFileRecords(key, offset, limit, query = "", field = "") {
+async function apiFileRecords(key, offset, limit, query = "", field = "", negate = false) {
   const params = new URLSearchParams({ offset, limit });
   if (query) params.set("query", query);
   if (field) params.set("field", field);
+  if (negate) params.set("negate", "true");
   const res = await fetch(`/api/files/${key}/records?${params}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -219,6 +222,7 @@ async function exportFiltered() {
     const blob = await apiExport(activeKey, {
       query: st.filterQuery,
       field: st.filterField,
+      negate: st.filterNegate,
     });
     downloadBlob(blob, `${st.name.replace(/\.jsonl$/i, "")}_filtered.jsonl`);
   } catch (err) {
@@ -388,6 +392,7 @@ async function switchTab(key) {
   } else {
     dom.filterInfo.classList.add("hidden");
   }
+  updateNegateButton();
 
   renderTabs();
   loadPage(st.currentPage);
@@ -593,7 +598,8 @@ async function loadPage(page) {
       offset,
       limit,
       st.filterQuery,
-      st.filterField
+      st.filterField,
+      st.filterNegate
     );
 
     if (st.isFiltering) {
@@ -941,7 +947,8 @@ function updateStatus(data) {
   let text;
   if (st.isFiltering) {
     const scanned = data.scanned ?? data.total;
-    text = `Filtered: ${data.total.toLocaleString()} matches (scanned ${scanned.toLocaleString()} records)`;
+    const prefix = st.filterNegate ? "NOT " : "";
+    text = `${prefix}Filtered: ${data.total.toLocaleString()} matches (scanned ${scanned.toLocaleString()} records)`;
     dom.filterInfo.textContent = text;
     dom.filterInfo.classList.remove("hidden");
   } else {
@@ -1002,6 +1009,7 @@ dom.filterInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") applyFilter();
 });
 dom.clearFilterBtn.addEventListener("click", clearFilter);
+dom.filterNegateBtn.addEventListener("click", toggleNegate);
 
 function applyFilter() {
   const st = getState();
@@ -1013,6 +1021,7 @@ function applyFilter() {
   st.isFiltering = query.length > 0;
   st.currentPage = 1;
   st.selectedIndices.clear();
+  updateNegateButton();
   loadPage(1);
 }
 
@@ -1023,10 +1032,36 @@ function clearFilter() {
   dom.fieldSelect.value = "";
   st.filterQuery = "";
   st.filterField = "";
+  st.filterNegate = false;
   st.isFiltering = false;
   st.currentPage = 1;
   st.selectedIndices.clear();
+  updateNegateButton();
   loadPage(1);
+}
+
+function toggleNegate() {
+  const st = getState();
+  if (!st) return;
+  st.filterNegate = !st.filterNegate;
+  st.currentPage = 1;
+  st.selectedIndices.clear();
+  updateNegateButton();
+  if (st.isFiltering) loadPage(1);
+}
+
+function updateNegateButton() {
+  const st = getState();
+  const btn = dom.filterNegateBtn;
+  if (st && st.filterNegate) {
+    btn.classList.add("active");
+    btn.textContent = "≠";
+    btn.title = "Exclude mode — showing records that do NOT match";
+  } else {
+    btn.classList.remove("active");
+    btn.textContent = "=";
+    btn.title = "Match mode — showing records that match";
+  }
 }
 
 // ── Event Listeners: Selection & Export ────────────────────────────────────
