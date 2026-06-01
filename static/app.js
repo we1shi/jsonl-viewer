@@ -20,6 +20,7 @@ const dom = {
   filterNegateBtn: $("#filter-negate-btn"),
   clearFilterBtn: $("#clear-filter-btn"),
   pageSize: $("#page-size"),
+  themeToggle: $("#theme-toggle"),
   statusText: $("#status-text"),
   filterInfo: $("#filter-info"),
   recordList: $("#record-list"),
@@ -240,6 +241,28 @@ function downloadBlob(blob, filename) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// ── Theme ──────────────────────────────────────────────────────────────────
+const THEME_KEY = "jsonl-viewer-theme";
+
+function getStoredTheme() {
+  const t = localStorage.getItem(THEME_KEY);
+  return t === "light" || t === "dark" ? t : null;
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute("data-theme") || "dark";
+  const next = current === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, next);
+  document.documentElement.setAttribute("data-theme", next);
+}
+
+// Follow system theme changes only when the user hasn't chosen manually
+window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", (e) => {
+  if (!getStoredTheme()) {
+    document.documentElement.setAttribute("data-theme", e.matches ? "light" : "dark");
+  }
+});
 
 // ── Tab Tooltip ────────────────────────────────────────────────────────────
 let tooltipEl = null;
@@ -1130,6 +1153,8 @@ document.addEventListener("keydown", (e) => {
 
 // ── Init ───────────────────────────────────────────────────────────────────
 async function init() {
+  dom.themeToggle.addEventListener("click", toggleTheme);
+
   try {
     // Check if server already has a file open (from CLI arg)
     const data = await apiListFiles();

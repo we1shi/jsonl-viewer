@@ -6,33 +6,73 @@
 }
 
 :root {
-  --bg: #2a2a2e;
-  --bg-card: #333338;
-  --bg-card-hover: #3b3b42;
-  --bg-input: #38383d;
-  --border: #4a4a50;
-  --text: #dfdfe0;
-  --text-dim: #95959a;
-  --text-bright: #ffffff;
-  --accent: #6cb6e8;
-  --accent-dim: #3a6d9e;
-  --green: #5fd4b4;
-  --red: #f55c5c;
-  --yellow: #e2d98a;
-  --purple: #d09cd6;
-  --cyan: #5fd4b4;
-  --string: #d8a888;
-  --number: #bfd4aa;
-  --boolean: #6cb6e8;
-  --null: #95959a;
-  --key: #a8d8f8;
-  --bracket: #95959a;
-  --tab-active-bg: #2a2a2e;
-  --tab-inactive-bg: #38383d;
-  --tab-hover-bg: #42424a;
+  /* Dark theme — "Twilight" (warm muted, no neon) */
+  --bg: #1e1e22;
+  --bg-card: #28282d;
+  --bg-card-hover: #33333a;
+  --bg-input: #2d2d32;
+  --bg-elevated: #2a2a30;
+  --border: #3d3d44;
+  --border-strong: #50505a;
+  --text: #e2dfd9;
+  --text-dim: #9b9a95;
+  --text-bright: #f5f2eb;
+  --accent: #8ab4d8;
+  --accent-dim: #4a7090;
+  --accent-bg: rgba(138, 180, 216, 0.12);
+  --green: #8ad4a8;
+  --red: #e07a7a;
+  --yellow: #e2d490;
+  --purple: #b8a4d4;
+  --cyan: #8ad4a8;
+  --string: #d4a574;
+  --number: #a8c898;
+  --boolean: #b8a4d4;
+  --null: #9b9a95;
+  --key: #9ec8e8;
+  --bracket: #9b9a95;
+  --tab-active-bg: #1e1e22;
+  --tab-inactive-bg: #2d2d32;
+  --tab-hover-bg: #3a3a42;
+  --shadow: rgba(0, 0, 0, 0.4);
+  --overlay: rgba(0, 0, 0, 0.6);
+
   --radius: 6px;
   --font-mono: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono", monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+[data-theme="light"] {
+  /* Light theme — "Parchment" (warm cream, no pure white) */
+  --bg: #f5f1e8;
+  --bg-card: #ebe6d8;
+  --bg-card-hover: #e2ddcc;
+  --bg-input: #faf6ed;
+  --bg-elevated: #f0ebdf;
+  --border: #cbc4b3;
+  --border-strong: #aaa392;
+  --text: #2a2823;
+  --text-dim: #6e6a60;
+  --text-bright: #1a1815;
+  --accent: #5a7a98;
+  --accent-dim: #3a5a78;
+  --accent-bg: rgba(90, 122, 152, 0.10);
+  --green: #3a7a4a;
+  --red: #b04040;
+  --yellow: #8a7028;
+  --purple: #6a4a8a;
+  --cyan: #3a7a4a;
+  --string: #9a5028;
+  --number: #4a7a3a;
+  --boolean: #6a4a8a;
+  --null: #6e6a60;
+  --key: #2a4a6a;
+  --bracket: #6e6a60;
+  --tab-active-bg: #f5f1e8;
+  --tab-inactive-bg: #ebe6d8;
+  --tab-hover-bg: #e2ddcc;
+  --shadow: rgba(50, 40, 30, 0.12);
+  --overlay: rgba(40, 30, 20, 0.35);
 }
 
 html, body {
@@ -128,7 +168,7 @@ html, body {
 }
 
 .tab-close:hover {
-  background: rgba(255,255,255,0.15);
+  background: var(--accent-bg);
   color: var(--text-bright);
 }
 
@@ -156,8 +196,8 @@ html, body {
 .tab-tooltip {
   position: fixed;
   z-index: 2000;
-  background: #3c3c3c;
-  color: #f0f0f0;
+  background: var(--bg-elevated);
+  color: var(--text-bright);
   padding: 4px 10px;
   border-radius: 4px;
   font-size: 12px;
@@ -167,7 +207,8 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  box-shadow: 0 2px 8px var(--shadow);
+  border: 1px solid var(--border);
 }
 
 #tab-empty {
@@ -676,7 +717,7 @@ html, body {
 #modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -696,7 +737,7 @@ html, body {
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px var(--shadow);
 }
 
 .modal-header {
@@ -878,4 +919,64 @@ html, body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-dim);
+}
+
+/* ── Theme Toggle ────────────────────────────────────────────────────────── */
+.btn-theme {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.btn-theme:hover {
+  background: var(--tab-hover-bg);
+  color: var(--text-bright);
+  border-color: var(--border-strong);
+}
+
+.btn-theme svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: block;
+}
+
+/* In dark mode, show the moon (you are in dark) */
+.btn-theme .icon-sun { display: none; }
+.btn-theme .icon-moon { display: block; }
+/* In light mode, show the sun (you are in light) */
+[data-theme="light"] .btn-theme .icon-sun { display: block; }
+[data-theme="light"] .btn-theme .icon-moon { display: none; }
+
+/* ── Theme Transitions ───────────────────────────────────────────────────── */
+/* Smooth swap on theme change. Limited to the main surfaces — avoids
+   animating every record card on toggle, which would be janky. */
+body, #tabbar, #topbar, #pagination, #actions-bar, #statusbar, #modal {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.tab, .btn-action, .btn-theme, .btn-negate, #filter-btn,
+#field-select, #filter-input, #page-size, #page-jump,
+#modal-path-input, #modal-up-btn, #modal-open-btn {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.tab-tooltip, .modal-item {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb {
+  transition: background 0.2s ease;
 }
