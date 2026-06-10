@@ -1,7 +1,6 @@
 import argparse
 import base64
 import json
-import os
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -49,9 +48,11 @@ def build_index(path: Path) -> tuple[list[int], int]:
             chunk = f.read(16 * 1024 * 1024)
             if not chunk:
                 break
-            for i, b in enumerate(chunk):
-                if b == 0x0A:
-                    offs.append(f.tell() - len(chunk) + i + 1)
+            base = f.tell() - len(chunk)
+            pos = chunk.find(b"\n")
+            while pos != -1:
+                offs.append(base + pos + 1)
+                pos = chunk.find(b"\n", pos + 1)
     if len(offs) > 0:
         fsize = path.stat().st_size
         if offs[-1] >= fsize:
@@ -120,38 +121,56 @@ def read_records_batch(fi: FileIndex, start_idx: int, count: int) -> list[dict]:
     return results
 
 
-def scan_filter(fi: FileIndex, query: str, field: str | None, offset: int, limit: int, negate: bool = False) -> dict:
-    matches: list[int] = []
+def record_matches_query(rec: dict, query: str, field: str | None, negate: bool = False) -> bool:
     q = query.lower()
+    matched = False
+    if field:
+        val = rec.get(field)
+        if val is not None:
+            matched = q in json.dumps(val, ensure_ascii=False).lower()
+    else:
+        matched = q in json.dumps(rec, ensure_ascii=False).lower()
+    return matched != negate
+
+
+def iter_matching_indices(
+    fi: FileIndex,
+    query: str,
+    field: str | None,
+    negate: bool = False,
+    scan_limit: int | None = None,
+):
+    if scan_limit is None:
+        scan_limit = MAX_FILTER_SCAN
+    scan_count = min(fi.count, scan_limit)
+    for i in range(scan_count):
+        rec = read_record(fi, i)
+        if rec is not None and record_matches_query(rec, query, field, negate):
+            yield i
+
+
+def scan_filter(fi: FileIndex, query: str, field: str | None, offset: int, limit: int, negate: bool = False) -> dict:
     scan_count = min(fi.count, MAX_FILTER_SCAN)
+    records = []
+    total_matches = 0
 
     for i in range(scan_count):
         rec = read_record(fi, i)
         if rec is None:
             continue
-        matched = False
-        if field:
-            val = rec.get(field)
-            if val is not None:
-                if q in json.dumps(val, ensure_ascii=False).lower():
-                    matched = True
-        else:
-            raw = json.dumps(rec, ensure_ascii=False).lower()
-            if q in raw:
-                matched = True
-        if matched != negate:
-            matches.append(i)
+        if record_matches_query(rec, query, field, negate):
+            if offset <= total_matches < offset + limit:
+                rec["_index"] = i
+                records.append(rec)
+            total_matches += 1
 
-    total_matches = len(matches)
-    page_indices = matches[offset : offset + limit]
-    records = []
-    for idx in page_indices:
-        rec = read_record(fi, idx)
-        if rec is not None:
-            rec["_index"] = idx
-            records.append(rec)
-
-    return {"records": records, "total": total_matches, "scanned": scan_count}
+    return {
+        "records": records,
+        "total": total_matches,
+        "scanned": scan_count,
+        "limited": fi.count > scan_count,
+        "scan_limit": MAX_FILTER_SCAN,
+    }
 
 
 def get_available_fields(fi: FileIndex, sample_size: int = 100) -> list[str]:
@@ -341,23 +360,8 @@ def api_export_file(key: str, req: ExportRequest):
     if req.indices is not None:
         indices = sorted(set(req.indices))
     elif req.query:
-        indices = []
-        q = req.query.lower()
         fname = req.field if req.field else None
-        for i in range(fi.count):
-            rec = read_record(fi, i)
-            if rec is None:
-                continue
-            matched = False
-            if fname:
-                val = rec.get(fname)
-                if val is not None and q in json.dumps(val, ensure_ascii=False).lower():
-                    matched = True
-            else:
-                if q in json.dumps(rec, ensure_ascii=False).lower():
-                    matched = True
-            if matched != req.negate:
-                indices.append(i)
+        indices = list(iter_matching_indices(fi, req.query, fname, req.negate))
     else:
         raise HTTPException(status_code=400, detail="Provide indices or query")
 

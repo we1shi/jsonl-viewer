@@ -198,8 +198,10 @@ function updateActionsBar() {
   if (st.isFiltering && st.filteredTotal > 0) {
     dom.btnExportFiltered.classList.remove("hidden");
     dom.btnExportFiltered.textContent = `Export filtered (${st.filteredTotal})`;
+    dom.btnExportFiltered.title = "Export records from the current filtered result set";
   } else {
     dom.btnExportFiltered.classList.add("hidden");
+    dom.btnExportFiltered.title = "";
   }
 }
 
@@ -457,6 +459,8 @@ async function openFileTab(path) {
 async function closeFileTab(key) {
   const fi = fileStates.get(key);
   if (!fi) return;
+  const closingActive = key === activeKey;
+  const oldIdx = tabOrder.indexOf(key);
 
   try {
     await apiCloseFile(fi.path);
@@ -465,40 +469,15 @@ async function closeFileTab(key) {
   }
 
   fileStates.delete(key);
+  tabOrder = tabOrder.filter(k => k !== key && fileStates.has(k));
 
-  const keys = Array.from(fileStates.keys());
-  if (key === activeKey) {
-    if (keys.length > 1) {
-      // Switch to the neighboring tab
-      const oldIdx = keys.indexOf(key);
-      const newIdx = oldIdx > 0 ? oldIdx - 1 : 0;
-      // Actually, since we just deleted the key, let's recalculate
-      const remainingKeys = Array.from(fileStates.keys());
-      if (remainingKeys.length > 0) {
-        const targetKey = remainingKeys[Math.min(oldIdx, remainingKeys.length - 1)];
-        activeKey = targetKey;
-        const st = fileStates.get(targetKey);
-        dom.filename.textContent = st.name || "JSONL Viewer";
-        dom.recordCount.textContent = `${st.totalRecords.toLocaleString()} records`;
-        dom.recordCount.classList.remove("hidden");
-        document.title = `${st.name} — JSONL Viewer`;
-        dom.pageSize.value = st.pageSize;
-        dom.filterInput.value = st.filterQuery;
-        dom.fieldSelect.value = st.filterField;
-        populateFieldSelect(st.availableFields);
-        if (st.filterQuery) {
-          dom.filterInfo.classList.remove("hidden");
-        } else {
-          dom.filterInfo.classList.add("hidden");
-        }
-        renderTabs();
-        loadPage(st.currentPage);
-      } else {
-        activeKey = null;
-        renderTabs();
-      }
+  if (closingActive) {
+    activeKey = null;
+    const targetIdx = Math.min(Math.max(oldIdx, 0), tabOrder.length - 1);
+    const targetKey = tabOrder[targetIdx];
+    if (targetKey) {
+      await switchTab(targetKey);
     } else {
-      activeKey = null;
       renderTabs();
     }
   } else {
@@ -971,7 +950,8 @@ function updateStatus(data) {
   if (st.isFiltering) {
     const scanned = data.scanned ?? data.total;
     const prefix = st.filterNegate ? "NOT " : "";
-    text = `${prefix}Filtered: ${data.total.toLocaleString()} matches (scanned ${scanned.toLocaleString()} records)`;
+    const suffix = data.limited ? `first ${scanned.toLocaleString()} of ${st.totalRecords.toLocaleString()} records` : `${scanned.toLocaleString()} records`;
+    text = `${prefix}Filtered: ${data.total.toLocaleString()} matches (scanned ${suffix})`;
     dom.filterInfo.textContent = text;
     dom.filterInfo.classList.remove("hidden");
   } else {
